@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Re-signer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        textarea {
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .error {
+            background: #fed7d7;
+            border-left-color: #e53e3e;
+            color: #c53030;
+        }
+        
+        .success {
+            background: #c6f6d5;
+            border-left-color: #38a169;
+            color: #2d3748;
+        }
+        
+        .decoded-payload {
+            background: #e6fffa;
+            border-left-color: #319795;
+            margin-top: 15px;
+        }
+        
+        .json-editor {
+            background: #1a202c;
+            color: #e2e8f0;
+            border: 2px solid #4a5568;
+        }
+        
+        .json-editor:focus {
+            border-color: #667eea;
+        }
+        
+        .section {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+        
+        .info {
+            background: #bee3f8;
+            border-left-color: #3182ce;
+            color: #2c5282;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 JWT Re-signer</h1>
+        <div style="text-align: center; margin-bottom: 30px;">
+            <div style="display: inline-block; background: linear-gradient(45deg, #667eea, #764ba2); padding: 8px 20px; border-radius: 25px; color: white; font-weight: 600; font-size: 14px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+                ⚡ Developed by <span style="color: #FFD700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">jrhackerman</span> ⚡
+            </div>
+        </div>
+        
+        <div class="result info">
+            <strong>Instructions:</strong> Enter your existing JWT token and secret key. You can modify the payload if needed, then generate a new signed token.
+        </div>
+        
+        <div class="section">
+            <div class="form-group">
+                <label for="existingJwt">Existing JWT Token:</label>
+                <textarea id="existingJwt" rows="4" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"></textarea>
+            </div>
+            
+            <button onclick="decodeJWT()">🔍 Decode JWT</button>
+            
+            <div id="decodedResult"></div>
+        </div>
+        
+        <div class="section">
+            <div class="form-group">
+                <label for="payloadEditor">JWT Payload (JSON):</label>
+                <textarea id="payloadEditor" class="json-editor" rows="8" placeholder="Decoded payload will appear here..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="algorithm">Algorithm:</label>
+                <select id="algorithm" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                    <option value="HS256">HS256 (HMAC SHA-256)</option>
+                    <option value="HS384">HS384 (HMAC SHA-384)</option>
+                    <option value="HS512">HS512 (HMAC SHA-512)</option>
+                    <option value="RS256">RS256 (RSA SHA-256)</option>
+                    <option value="RS384">RS384 (RSA SHA-384)</option>
+                    <option value="RS512">RS512 (RSA SHA-512)</option>
+                    <option value="ES256">ES256 (ECDSA SHA-256)</option>
+                    <option value="ES384">ES384 (ECDSA SHA-384)</option>
+                    <option value="ES512">ES512 (ECDSA SHA-512)</option>
+                    <option value="PS256">PS256 (RSA-PSS SHA-256)</option>
+                    <option value="PS384">PS384 (RSA-PSS SHA-384)</option>
+                    <option value="PS512">PS512 (RSA-PSS SHA-512)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="secretKey">Secret Key / Private Key:</label>
+                <textarea id="secretKey" rows="6" placeholder="For HMAC: your-secret-key&#10;For RSA/ECDSA: -----BEGIN PRIVATE KEY-----&#10;MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...&#10;-----END PRIVATE KEY-----"></textarea>
+            </div>
+            
+            <button onclick="resignJWT()">✍️ Re-sign JWT</button>
+            
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Simple Base64 URL encode/decode functions
+        function base64UrlEncode(str) {
+            return btoa(str)
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+        }
+        
+        function base64UrlDecode(str) {
+            // Remove any whitespace and ensure proper padding
+            str = str.trim().replace(/\-/g, '+').replace(/_/g, '/');
+            
+            // Add padding if needed
+            while (str.length % 4) {
+                str += '=';
+            }
+            
+            try {
+                return atob(str);
+            } catch (e) {
+                throw new Error('Invalid Base64 encoding in JWT token');
+            }
+        }
+        
+        // HMAC implementations for different hash algorithms
+        async function hmacSHA(algorithm, key, message) {
+            const encoder = new TextEncoder();
+            const keyData = encoder.encode(key);
+            const messageData = encoder.encode(message);
+            
+            let hashAlgorithm;
+            switch (algorithm) {
+                case 'HS256': hashAlgorithm = 'SHA-256'; break;
+                case 'HS384': hashAlgorithm = 'SHA-384'; break;
+                case 'HS512': hashAlgorithm = 'SHA-512'; break;
+                default: throw new Error('Unsupported HMAC algorithm');
+            }
+            
+            const cryptoKey = await crypto.subtle.importKey(
+                'raw',
+                keyData,
+                { name: 'HMAC', hash: hashAlgorithm },
+                false,
+                ['sign']
+            );
+            
+            const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+            return new Uint8Array(signature);
+        }
+        
+        // RSA signing implementation
+        async function rsaSign(algorithm, privateKeyPem, message) {
+            const encoder = new TextEncoder();
+            const messageData = encoder.encode(message);
+            
+            let hashAlgorithm;
+            switch (algorithm) {
+                case 'RS256': hashAlgorithm = 'SHA-256'; break;
+                case 'RS384': hashAlgorithm = 'SHA-384'; break;
+                case 'RS512': hashAlgorithm = 'SHA-512'; break;
+                case 'PS256': hashAlgorithm = 'SHA-256'; break;
+                case 'PS384': hashAlgorithm = 'SHA-384'; break;
+                case 'PS512': hashAlgorithm = 'SHA-512'; break;
+                default: throw new Error('Unsupported RSA algorithm');
+            }
+            
+            // Parse PEM key
+            const pemHeader = "-----BEGIN PRIVATE KEY-----";
+            const pemFooter = "-----END PRIVATE KEY-----";
+            const pemContents = privateKeyPem.replace(pemHeader, "").replace(pemFooter, "").replace(/\s/g, "");
+            const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+            
+            const algorithmParams = algorithm.startsWith('PS') 
+                ? { name: 'RSA-PSS', hash: hashAlgorithm, saltLength: hashAlgorithm === 'SHA-256' ? 32 : hashAlgorithm === 'SHA-384' ? 48 : 64 }
+                : { name: 'RSASSA-PKCS1-v1_5', hash: hashAlgorithm };
+            
+            const cryptoKey = await crypto.subtle.importKey(
+                'pkcs8',
+                binaryDer,
+                algorithmParams,
+                false,
+                ['sign']
+            );
+            
+            const signature = await crypto.subtle.sign(algorithmParams, cryptoKey, messageData);
+            return new Uint8Array(signature);
+        }
+        
+        // ECDSA signing implementation
+        async function ecdsaSign(algorithm, privateKeyPem, message) {
+            const encoder = new TextEncoder();
+            const messageData = encoder.encode(message);
+            
+            let namedCurve, hashAlgorithm;
+            switch (algorithm) {
+                case 'ES256': 
+                    namedCurve = 'P-256'; 
+                    hashAlgorithm = 'SHA-256'; 
+                    break;
+                case 'ES384': 
+                    namedCurve = 'P-384'; 
+                    hashAlgorithm = 'SHA-384'; 
+                    break;
+                case 'ES512': 
+                    namedCurve = 'P-521'; 
+                    hashAlgorithm = 'SHA-512'; 
+                    break;
+                default: throw new Error('Unsupported ECDSA algorithm');
+            }
+            
+            // Parse PEM key
+            const pemHeader = "-----BEGIN PRIVATE KEY-----";
+            const pemFooter = "-----END PRIVATE KEY-----";
+            const pemContents = privateKeyPem.replace(pemHeader, "").replace(pemFooter, "").replace(/\s/g, "");
+            const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+            
+            const cryptoKey = await crypto.subtle.importKey(
+                'pkcs8',
+                binaryDer,
+                { name: 'ECDSA', namedCurve: namedCurve },
+                false,
+                ['sign']
+            );
+            
+            const signature = await crypto.subtle.sign(
+                { name: 'ECDSA', hash: hashAlgorithm },
+                cryptoKey,
+                messageData
+            );
+            return new Uint8Array(signature);
+        }
+        
+        function arrayBufferToBase64Url(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return base64UrlEncode(binary);
+        }
+        
+        function decodeJWT() {
+            const jwt = document.getElementById('existingJwt').value.trim();
+            const resultDiv = document.getElementById('decodedResult');
+            
+            if (!jwt) {
+                resultDiv.innerHTML = '<div class="result error">Please enter a JWT token.</div>';
+                return;
+            }
+            
+            try {
+                // Clean the JWT token - remove any extra whitespace or line breaks
+                const cleanJwt = jwt.replace(/\s+/g, '');
+                const parts = cleanJwt.split('.');
+                
+                if (parts.length !== 3) {
+                    throw new Error('Invalid JWT format - must have exactly 3 parts separated by dots');
+                }
+                
+                // Validate that each part contains valid characters
+                const base64UrlPattern = /^[A-Za-z0-9_-]+$/;
+                for (let i = 0; i < parts.length; i++) {
+                    if (!base64UrlPattern.test(parts[i])) {
+                        throw new Error(`Invalid characters in JWT part ${i + 1}`);
+                    }
+                }
+                
+                const header = JSON.parse(base64UrlDecode(parts[0]));
+                const payload = JSON.parse(base64UrlDecode(parts[1]));
+                
+                // Set the algorithm dropdown to match the original token
+                const algorithmSelect = document.getElementById('algorithm');
+                if (header.alg) {
+                    algorithmSelect.value = header.alg;
+                }
+                
+                // Populate the payload editor
+                document.getElementById('payloadEditor').value = JSON.stringify(payload, null, 2);
+                
+                resultDiv.innerHTML = `
+                    <div class="result decoded-payload">
+                        <strong>✅ JWT Successfully Decoded!</strong>
+                    </div>
+                    <div class="result decoded-payload">
+                        <strong>Header:</strong><br>
+                        <pre>${JSON.stringify(header, null, 2)}</pre>
+                    </div>
+                    <div class="result decoded-payload">
+                        <strong>Payload:</strong><br>
+                        <pre>${JSON.stringify(payload, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>Error decoding JWT:</strong> ${error.message}<br><br>
+                        <strong>Troubleshooting tips:</strong><br>
+                        • Make sure the JWT is complete and not truncated<br>
+                        • Remove any extra spaces or line breaks<br>
+                        • Ensure the token has exactly 3 parts separated by dots<br>
+                        • Check that you copied the entire token
+                    </div>
+                `;
+            }
+        }
+        
+        async function resignJWT() {
+            const payloadText = document.getElementById('payloadEditor').value.trim();
+            const key = document.getElementById('secretKey').value.trim();
+            const algorithm = document.getElementById('algorithm').value;
+            const resultDiv = document.getElementById('result');
+            
+            if (!payloadText || !key) {
+                resultDiv.innerHTML = '<div class="result error">Please provide both payload and key.</div>';
+                return;
+            }
+            
+            try {
+                // Parse the payload
+                const payload = JSON.parse(payloadText);
+                
+                // Create header with selected algorithm
+                const header = {
+                    "alg": algorithm,
+                    "typ": "JWT"
+                };
+                
+                // Encode header and payload
+                const encodedHeader = base64UrlEncode(JSON.stringify(header));
+                const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+                
+                // Create the message to sign
+                const message = encodedHeader + '.' + encodedPayload;
+                
+                // Generate signature based on algorithm
+                let signature;
+                
+                if (algorithm.startsWith('HS')) {
+                    // HMAC algorithms
+                    signature = await hmacSHA(algorithm, key, message);
+                } else if (algorithm.startsWith('RS') || algorithm.startsWith('PS')) {
+                    // RSA algorithms
+                    signature = await rsaSign(algorithm, key, message);
+                } else if (algorithm.startsWith('ES')) {
+                    // ECDSA algorithms
+                    signature = await ecdsaSign(algorithm, key, message);
+                } else {
+                    throw new Error('Unsupported algorithm: ' + algorithm);
+                }
+                
+                const encodedSignature = arrayBufferToBase64Url(signature);
+                
+                // Create the final JWT
+                const newJWT = message + '.' + encodedSignature;
+                
+                resultDiv.innerHTML = `
+                    <div class="result success">
+                        <strong>🎉 New JWT Token Generated!</strong><br>
+                        <strong>Algorithm:</strong> ${algorithm}<br><br>
+                        <textarea readonly style="width: 100%; height: 120px; margin-top: 10px; font-family: 'Courier New', monospace; font-size: 12px; word-break: break-all;">${newJWT}</textarea>
+                        <button onclick="copyToClipboard('${newJWT.replace(/'/g, "\\\'")}')" style="width: auto; margin-top: 10px; padding: 8px 16px;">📋 Copy Token</button>
+                    </div>
+                `;
+            } catch (error) {
+                let errorMessage = error.message;
+                
+                // Provide specific guidance based on error type
+                if (error.message.includes('private key') || error.message.includes('PEM')) {
+                    errorMessage += '<br><br><strong>Key format help:</strong><br>';
+                    if (algorithm.startsWith('HS')) {
+                        errorMessage += '• HMAC algorithms need a simple secret string<br>• Example: "my-secret-key"';
+                    } else {
+                        errorMessage += '• RSA/ECDSA algorithms need PEM formatted private keys<br>';
+                        errorMessage += '• Must start with "-----BEGIN PRIVATE KEY-----"<br>';
+                        errorMessage += '• Must end with "-----END PRIVATE KEY-----"';
+                    }
+                }
+                
+                resultDiv.innerHTML = '<div class="result error">Error creating JWT: ' + errorMessage + '</div>';
+            }
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('JWT token copied to clipboard!');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('JWT token copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>
